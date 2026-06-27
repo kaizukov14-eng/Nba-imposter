@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>BAUMSCHEIBE — NBA Imposter</title>
+<style>
+  :root{
+    --wood-1:#1c140d;
+    --wood-2:#2a1d12;
+    --court-line:#e8dcc4;
+    --chalk:#f3ead8;
+    --ember:#d9622b;
+    --ember-dim:#7a3a1c;
+    --crowd:#8a7560;
+    --crew:#3f6e5e;
+    --imposter:#a23b2e;
+    --font-display:'Rockwell','Bitstream Vera Serif',Georgia,serif;
+    --font-body:'Helvetica Neue',Arial,sans-serif;
+    --font-mono:'Courier New',monospace;
+  }
+
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+
+  html,body{
+    margin:0; padding:0; min-height:100%;
+    background:
+      radial-gradient(ellipse at 50% -10%, rgba(217,98,43,0.08), transparent 60%),
+      repeating-linear-gradient(90deg, var(--wood-1) 0px, var(--wood-2) 2px, var(--wood-1) 38px, var(--wood-2) 40px),
+      var(--wood-1);
+    color:var(--chalk);
+    font-family:var(--font-body);
+    overscroll-behavior:none;
+  }
+
+  #app{
+    min-height:100vh;
+    display:flex; flex-direction:column;
+    align-items:center;
+    padding:env(safe-area-inset-top,0) 0 calc(env(safe-area-inset-bottom,0) + 16px) 0;
+  }
+
+  .screen{
+    width:100%; max-width:480px;
+    min-height:100vh;
+    display:flex; flex-direction:column;
+    padding:28px 22px 20px;
+    animation:fadeIn .35s ease;
+  }
+
+  @keyframes fadeIn{ from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);} }
+  @media (prefers-reduced-motion: reduce){ .screen{animation:none;} }
+
+  /* ---------- Header / Branding ---------- */
+  .brand{
+    display:flex; align-items:baseline; justify-content:space-between;
+    border-bottom:2px solid var(--ember-dim);
+    padding-bottom:10px; margin-bottom:24px;
+  }
+  .brand h1{
+    font-family:var(--font-display);
+    font-size:22px; letter-spacing:0.5px; margin:0;
+    color:var(--chalk);
+  }
+  .brand h1 span{color:var(--ember);}
+  .brand .tag{
+    font-family:var(--font-mono); font-size:11px; color:var(--crowd);
+    text-transform:uppercase; letter-spacing:1px;
+  }
+
+  /* ---------- Generic buttons ---------- */
+  button{
+    font-family:var(--font-body); border:none; cursor:pointer;
+    -webkit-appearance:none;
+  }
+  .btn-primary{
+    background:var(--ember); color:#1c140d; font-weight:700;
+    font-size:17px; padding:16px 20px; border-radius:3px;
+    letter-spacing:0.3px;
+    box-shadow:0 4px 0 var(--ember-dim);
+    transition:transform .08s ease, box-shadow .08s ease;
+  }
+  .btn-primary:active{ transform:translateY(3px); box-shadow:0 1px 0 var(--ember-dim); }
+  .btn-primary:disabled{ opacity:.35; box-shadow:none; }
+
+  .btn-secondary{
+    background:transparent; color:var(--court-line);
+    border:1.5px solid var(--crowd); font-size:15px;
+    padding:13px 18px; border-radius:3px;
+  }
+  .btn-secondary:active{ background:rgba(255,255,255,0.05); }
+
+  .btn-ghost{
+    background:none; color:var(--crowd); font-size:14px;
+    text-decoration:underline; padding:8px;
+  }
+
+  /* ---------- Setup screen ---------- */
+  .field-label{
+    font-family:var(--font-mono); font-size:12px; text-transform:uppercase;
+    letter-spacing:1px; color:var(--crowd); margin:0 0 8px;
+  }
+  .stepper{
+    display:flex; align-items:center; gap:18px; margin-bottom:28px;
+  }
+  .stepper button{
+    width:46px; height:46px; border-radius:50%;
+    background:var(--wood-2); border:1.5px solid var(--ember-dim);
+    color:var(--ember); font-size:22px; font-weight:700;
+  }
+  .stepper .count{
+    font-family:var(--font-display); font-size:34px; min-width:50px; text-align:center;
+  }
+
+  .player-names{
+    display:flex; flex-direction:column; gap:10px; margin-bottom:24px;
+  }
+  .player-names input{
+    background:var(--wood-2); border:1px solid var(--ember-dim);
+    color:var(--chalk); font-size:16px; padding:13px 14px; border-radius:3px;
+    font-family:var(--font-body);
+  }
+  .player-names input::placeholder{ color:#6b5b48; }
+  .player-names input:focus{ outline:none; border-color:var(--ember); }
+
+  .category-grid{
+    display:flex; flex-wrap:wrap; gap:8px; margin-bottom:24px;
+  }
+  .chip{
+    padding:9px 14px; border-radius:20px; font-size:13px;
+    border:1.5px solid var(--crowd); color:var(--court-line);
+    background:transparent;
+  }
+  .chip.active{ background:var(--ember); border-color:var(--ember); color:#1c140d; font-weight:700; }
+
+  .imposter-count-row{
+    display:flex; align-items:center; justify-content:space-between;
+    margin-bottom:30px; padding:14px 16px; background:rgba(0,0,0,0.2);
+    border-radius:6px; border:1px solid var(--ember-dim);
+  }
+  .mini-stepper{ display:flex; align-items:center; gap:14px; }
+  .mini-stepper button{
+    width:32px; height:32px; border-radius:50%; background:var(--wood-2);
+    border:1px solid var(--ember-dim); color:var(--ember); font-size:16px; font-weight:700;
+  }
+  .mini-stepper .n{ font-size:20px; font-weight:700; min-width:20px; text-align:center; }
+
+  .spacer{ flex:1; }
+
+  .error-text{ color:var(--ember); font-size:13px; margin-top:-14px; margin-bottom:18px; }
+
+  /* ---------- Pass-the-phone reveal ---------- */
+  .reveal-stage{
+    flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    text-align:center;
+  }
+  .player-turn-label{
+    font-family:var(--font-mono); font-size:13px; color:var(--crowd);
+    text-transform:uppercase; letter-spacing:2px; margin-bottom:6px;
+  }
+  .player-turn-name{
+    font-family:var(--font-display); font-size:30px; margin:0 0 40px;
+  }
+
+  .card{
+    width:240px; height:300px; perspective:1000px; margin-bottom:36px;
+  }
+  .card-inner{
+    width:100%; height:100%; position:relative;
+    transform-style:preserve-3d; transition:transform .55s cubic-bezier(.4,.1,.2,1);
+    border-radius:14px;
+  }
+  .card.flipped .card-inner{ transform:rotateY(180deg); }
+  .card-face{
+    position:absolute; width:100%; height:100%; backface-visibility:hidden;
+    border-radius:14px; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    padding:20px;
+  }
+  .card-front{
+    background:
+      repeating-linear-gradient(45deg, rgba(255,255,255,0.025) 0 2px, transparent 2px 14px),
+      linear-gradient(160deg, var(--wood-2), var(--wood-1));
+    border:2px solid var(--ember-dim);
+  }
+  .card-front .ball{
+    font-size:54px; opacity:.85;
+  }
+  .card-front .tap-hint{
+    font-family:var(--font-mono); font-size:12px; color:var(--crowd);
+    margin-top:18px; text-transform:uppercase; letter-spacing:1px;
+  }
+  .card-back{
+    background:linear-gradient(160deg, #241a12, #150f0a);
+    border:2px solid var(--ember);
+    transform:rotateY(180deg);
+  }
+  .card-back .role-tag{
+    font-family:var(--font-mono); font-size:11px; text-transform:uppercase;
+    letter-spacing:2px; padding:4px 10px; border-radius:10px; margin-bottom:14px;
+  }
+  .role-tag.crew{ background:rgba(63,110,94,0.25); color:#8fd9bd; border:1px solid var(--crew); }
+  .role-tag.imp{ background:rgba(162,59,46,0.25); color:#ef9c8c; border:1px solid var(--imposter); }
+  .card-back .reveal-name{
+    font-family:var(--font-display); font-size:26px; text-align:center; line-height:1.25;
+    margin:0 0 8px;
+  }
+  .card-back .reveal-sub{
+    font-size:12.5px; color:var(--crowd); text-align:center; line-height:1.5; padding:0 6px;
+  }
+
+  .progress-dots{ display:flex; gap:6px; margin-bottom:18px; }
+  .progress-dots .dot{ width:7px; height:7px; border-radius:50%; background:var(--wood-2); border:1px solid var(--ember-dim); }
+  .progress-dots .dot.done{ background:var(--ember); border-color:var(--ember); }
+
+  /* ---------- Game in progress ---------- */
+  .ip-stage{ flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; }
+  .ip-stage .icon{ font-size:48px; margin-bottom:20px; }
+  .ip-stage h2{ font-family:var(--font-display); font-size:24px; margin:0 0 14px; }
+  .ip-stage p{ color:var(--crowd); font-size:14.5px; line-height:1.6; max-width:340px; margin:0 0 30px; }
+  .order-list{
+    background:rgba(0,0,0,0.2); border:1px solid var(--ember-dim); border-radius:8px;
+    padding:16px; width:100%; max-width:320px; margin-bottom:30px; text-align:left;
+  }
+  .order-list div{ font-size:14px; padding:6px 0; color:var(--court-line); }
+  .order-list div b{ color:var(--ember); font-family:var(--font-mono); margin-right:8px; }
+
+  /* ---------- Vote screen ---------- */
+  .vote-list{ display:flex; flex-direction:column; gap:10px; margin-bottom:24px; }
+  .vote-option{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:15px 16px; border-radius:6px; border:1.5px solid var(--crowd);
+    background:rgba(0,0,0,0.15); font-size:16px;
+  }
+  .vote-option.selected{ border-color:var(--ember); background:rgba(217,98,43,0.12); }
+  .vote-option .vname{ font-weight:600; }
+  .vote-option .check{ color:var(--ember); font-size:18px; opacity:0; }
+  .vote-option.selected .check{ opacity:1; }
+
+  /* ---------- Results ---------- */
+  .result-banner{
+    text-align:center; padding:26px 18px; border-radius:8px; margin-bottom:24px;
+  }
+  .result-banner.win{ background:rgba(63,110,94,0.18); border:1.5px solid var(--crew); }
+  .result-banner.lose{ background:rgba(162,59,46,0.18); border:1.5px solid var(--imposter); }
+  .result-banner .headline{ font-family:var(--font-display); font-size:24px; margin:0 0 6px; }
+  .result-banner .sub{ font-size:14px; color:var(--court-line); }
+
+  .reveal-card-final{
+    display:flex; align-items:center; gap:14px; background:rgba(0,0,0,0.2);
+    border:1px solid var(--ember-dim); border-radius:8px; padding:16px; margin-bottom:14px;
+  }
+  .reveal-card-final .label{ font-family:var(--font-mono); font-size:11px; color:var(--crowd); text-transform:uppercase; letter-spacing:1px; }
+  .reveal-card-final .val{ font-family:var(--font-display); font-size:19px; }
+
+  /* misc */
+  .top-link{ align-self:flex-start; margin-bottom:10px; }
+  .footer-note{ text-align:center; font-size:11.5px; color:#5c4d3c; margin-top:auto; padding-top:18px; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+(function(){
+
+/* ---------------- NBA Spieler-Datenbank ---------------- */
+/* era: "aktuell" | "alltime"   fame: "star" | "rolle" */
+const PLAYER_DB = [
+  // ===== AKTUELL — STARS (All-Stars, bekannte Namen) =====
+  {name:"Nikola Jokic", era:"aktuell", fame:"star"},
+  {name:"Luka Doncic", era:"aktuell", fame:"star"},
+  {name:"Shai Gilgeous-Alexander", era:"aktuell", fame:"star"},
+  {name:"Giannis Antetokounmpo", era:"aktuell", fame:"star"},
+  {name:"Jayson Tatum", era:"aktuell", fame:"star"},
+  {name:"Anthony Edwards", era:"aktuell", fame:"star"},
+  {name:"Victor Wembanyama", era:"aktuell", fame:"star"},
+  {name:"Joel Embiid", era:"aktuell", fame:"star"},
+  {name:"Stephen Curry", era:"aktuell", fame:"star"},
+  {name:"LeBron James", era:"aktuell", fame:"star"},
+  {name:"Kevin Durant", era:"aktuell", fame:"star"},
+  {name:"Damian Lillard", era:"aktuell", fame:"star"},
+  {name:"Devin Booker", era:"aktuell", fame:"star"},
+  {name:"Ja Morant", era:"aktuell", fame:"star"},
+  {name:"Jalen Brunson", era:"aktuell", fame:"star"},
+  {name:"Anthony Davis", era:"aktuell", fame:"star"},
+  {name:"Tyrese Haliburton", era:"aktuell", fame:"star"},
+  {name:"Donovan Mitchell", era:"aktuell", fame:"star"},
+  {name:"Domantas Sabonis", era:"aktuell", fame:"star"},
+  {name:"Karl-Anthony Towns", era:"aktuell", fame:"star"},
+  {name:"Paolo Banchero", era:"aktuell", fame:"star"},
+  {name:"Cade Cunningham", era:"aktuell", fame:"star"},
+  {name:"Jamal Murray", era:"aktuell", fame:"star"},
+  {name:"Kawhi Leonard", era:"aktuell", fame:"star"},
+  {name:"Paul George", era:"aktuell", fame:"star"},
+  {name:"Jimmy Butler", era:"aktuell", fame:"star"},
+  {name:"Bam Adebayo", era:"aktuell", fame:"star"},
+  {name:"Zion Williamson", era:"aktuell", fame:"star"},
+  {name:"Trae Young", era:"aktuell", fame:"star"},
+  {name:"De'Aaron Fox", era:"aktuell", fame:"star"},
+  {name:"James Harden", era:"aktuell", fame:"star"},
+  {name:"Kyrie Irving", era:"aktuell", fame:"star"},
+  {name:"Russell Westbrook", era:"aktuell", fame:"star"},
+  {name:"Brandon Ingram", era:"aktuell", fame:"star"},
+  {name:"Jaylen Brown", era:"aktuell", fame:"star"},
+  {name:"Alperen Sengun", era:"aktuell", fame:"star"},
+  {name:"Evan Mobley", era:"aktuell", fame:"star"},
+  {name:"Lauri Markkanen", era:"aktuell", fame:"star"},
+  {name:"Scottie Barnes", era:"aktuell", fame:"star"},
+  {name:"Chet Holmgren", era:"aktuell", fame:"star"},
+
+  // ===== AKTUELL — WENIGER BEKANNT (Bankspieler, Rotationsspieler, 3&D) =====
+  {name:"Isaiah Hartenstein", era:"aktuell", fame:"rolle"},
+  {name:"Jalen Williams", era:"aktuell", fame:"rolle"},
+  {name:"Franz Wagner", era:"aktuell", fame:"rolle"},
+  {name:"Dennis Schröder", era:"aktuell", fame:"rolle"},
+  {name:"Rudy Gobert", era:"aktuell", fame:"rolle"},
+  {name:"Mikal Bridges", era:"aktuell", fame:"rolle"},
+  {name:"Jrue Holiday", era:"aktuell", fame:"rolle"},
+  {name:"Jaden McDaniels", era:"aktuell", fame:"rolle"},
+  {name:"Herbert Jones", era:"aktuell", fame:"rolle"},
+  {name:"Tyrese Maxey", era:"aktuell", fame:"rolle"},
+  {name:"Derrick White", era:"aktuell", fame:"rolle"},
+  {name:"Naz Reid", era:"aktuell", fame:"rolle"},
+  {name:"Jaden Ivey", era:"aktuell", fame:"rolle"},
+  {name:"Jalen Suggs", era:"aktuell", fame:"rolle"},
+  {name:"Walker Kessler", era:"aktuell", fame:"rolle"},
+  {name:"Onyeka Okongwu", era:"aktuell", fame:"rolle"},
+  {name:"Cason Wallace", era:"aktuell", fame:"rolle"},
+  {name:"Amen Thompson", era:"aktuell", fame:"rolle"},
+  {name:"Dyson Daniels", era:"aktuell", fame:"rolle"},
+  {name:"Ausar Thompson", era:"aktuell", fame:"rolle"},
+  {name:"Jaime Jaquez Jr.", era:"aktuell", fame:"rolle"},
+  {name:"Jose Alvarado", era:"aktuell", fame:"rolle"},
+  {name:"Royce O'Neale", era:"aktuell", fame:"rolle"},
+  {name:"Bruce Brown", era:"aktuell", fame:"rolle"},
+  {name:"Caleb Martin", era:"aktuell", fame:"rolle"},
+  {name:"Max Strus", era:"aktuell", fame:"rolle"},
+  {name:"Gary Trent Jr.", era:"aktuell", fame:"rolle"},
+  {name:"Kelly Olynyk", era:"aktuell", fame:"rolle"},
+  {name:"Daniel Theis", era:"aktuell", fame:"rolle"},
+  {name:"Moritz Wagner", era:"aktuell", fame:"rolle"},
+  {name:"Maxi Kleber", era:"aktuell", fame:"rolle"},
+  {name:"Andre Drummond", era:"aktuell", fame:"rolle"},
+  {name:"Patty Mills", era:"aktuell", fame:"rolle"},
+  {name:"Garrison Mathews", era:"aktuell", fame:"rolle"},
+  {name:"Duncan Robinson", era:"aktuell", fame:"rolle"},
+  {name:"T.J. McConnell", era:"aktuell", fame:"rolle"},
+  {name:"Kenrich Williams", era:"aktuell", fame:"rolle"},
+  {name:"Luke Kornet", era:"aktuell", fame:"rolle"},
+  {name:"Jaxson Hayes", era:"aktuell", fame:"rolle"},
+  {name:"Jake LaRavia", era:"aktuell", fame:"rolle"},
+  {name:"Sandro Mamukelashvili", era:"aktuell", fame:"rolle"},
+
+  // ===== ALLZEIT — STARS (Legenden, Hall-of-Famer, bekannte Namen) =====
+  {name:"Michael Jordan", era:"alltime", fame:"star"},
+  {name:"Kobe Bryant", era:"alltime", fame:"star"},
+  {name:"Magic Johnson", era:"alltime", fame:"star"},
+  {name:"Larry Bird", era:"alltime", fame:"star"},
+  {name:"Shaquille O'Neal", era:"alltime", fame:"star"},
+  {name:"Tim Duncan", era:"alltime", fame:"star"},
+  {name:"Hakeem Olajuwon", era:"alltime", fame:"star"},
+  {name:"Wilt Chamberlain", era:"alltime", fame:"star"},
+  {name:"Bill Russell", era:"alltime", fame:"star"},
+  {name:"Kareem Abdul-Jabbar", era:"alltime", fame:"star"},
+  {name:"Allen Iverson", era:"alltime", fame:"star"},
+  {name:"Dirk Nowitzki", era:"alltime", fame:"star"},
+  {name:"Dwyane Wade", era:"alltime", fame:"star"},
+  {name:"Charles Barkley", era:"alltime", fame:"star"},
+  {name:"Kevin Garnett", era:"alltime", fame:"star"},
+  {name:"Scottie Pippen", era:"alltime", fame:"star"},
+  {name:"John Stockton", era:"alltime", fame:"star"},
+  {name:"Karl Malone", era:"alltime", fame:"star"},
+  {name:"Patrick Ewing", era:"alltime", fame:"star"},
+  {name:"Isiah Thomas", era:"alltime", fame:"star"},
+  {name:"Reggie Miller", era:"alltime", fame:"star"},
+  {name:"Gary Payton", era:"alltime", fame:"star"},
+  {name:"Vince Carter", era:"alltime", fame:"star"},
+  {name:"Tracy McGrady", era:"alltime", fame:"star"},
+  {name:"Chris Paul", era:"alltime", fame:"star"},
+  {name:"Carmelo Anthony", era:"alltime", fame:"star"},
+  {name:"Steve Nash", era:"alltime", fame:"star"},
+  {name:"Yao Ming", era:"alltime", fame:"star"},
+  {name:"Ray Allen", era:"alltime", fame:"star"},
+  {name:"Paul Pierce", era:"alltime", fame:"star"},
+  {name:"Dwight Howard", era:"alltime", fame:"star"},
+  {name:"Manu Ginobili", era:"alltime", fame:"star"},
+  {name:"Tony Parker", era:"alltime", fame:"star"},
+  {name:"Pau Gasol", era:"alltime", fame:"star"},
+  {name:"Dominique Wilkins", era:"alltime", fame:"star"},
+  {name:"Moses Malone", era:"alltime", fame:"star"},
+  {name:"Julius Erving", era:"alltime", fame:"star"},
+  {name:"Clyde Drexler", era:"alltime", fame:"star"},
+  {name:"David Robinson", era:"alltime", fame:"star"},
+  {name:"Detlef Schrempf", era:"alltime", fame:"star"},
+
+  // ===== ALLZEIT — WENIGER BEKANNT (solide Rollenspieler, Bankspieler, Defensiv-Spezialisten) =====
+  {name:"Bruce Bowen", era:"alltime", fame:"rolle"},
+  {name:"Robert Horry", era:"alltime", fame:"rolle"},
+  {name:"Shane Battier", era:"alltime", fame:"rolle"},
+  {name:"Derek Fisher", era:"alltime", fame:"rolle"},
+  {name:"Mark Jackson", era:"alltime", fame:"rolle"},
+  {name:"Rick Fox", era:"alltime", fame:"rolle"},
+  {name:"Brian Shaw", era:"alltime", fame:"rolle"},
+  {name:"Danny Green", era:"alltime", fame:"rolle"},
+  {name:"P.J. Tucker", era:"alltime", fame:"rolle"},
+  {name:"Jeff Hornacek", era:"alltime", fame:"rolle"},
+  {name:"Sam Cassell", era:"alltime", fame:"rolle"},
+  {name:"Bobby Jackson", era:"alltime", fame:"rolle"},
+  {name:"Eddie Jones", era:"alltime", fame:"rolle"},
+  {name:"Antonio McDyess", era:"alltime", fame:"rolle"},
+  {name:"Theo Ratliff", era:"alltime", fame:"rolle"},
+  {name:"Anderson Varejao", era:"alltime", fame:"rolle"},
+  {name:"Luc Mbah a Moute", era:"alltime", fame:"rolle"},
+  {name:"Matt Bonner", era:"alltime", fame:"rolle"},
+  {name:"Boris Diaw", era:"alltime", fame:"rolle"},
+  {name:"George Hill", era:"alltime", fame:"rolle"},
+  {name:"Avery Bradley", era:"alltime", fame:"rolle"},
+  {name:"Trevor Ariza", era:"alltime", fame:"rolle"},
+  {name:"Jared Dudley", era:"alltime", fame:"rolle"},
+  {name:"Kyle Korver", era:"alltime", fame:"rolle"},
+  {name:"Steve Blake", era:"alltime", fame:"rolle"},
+  {name:"Beno Udrih", era:"alltime", fame:"rolle"},
+  {name:"Channing Frye", era:"alltime", fame:"rolle"},
+  {name:"Jason Collins", era:"alltime", fame:"rolle"},
+  {name:"Brendan Haywood", era:"alltime", fame:"rolle"},
+  {name:"Earl Watson", era:"alltime", fame:"rolle"},
+  {name:"Devin Harris", era:"alltime", fame:"rolle"},
+  {name:"Raja Bell", era:"alltime", fame:"rolle"},
+  {name:"Quentin Richardson", era:"alltime", fame:"rolle"},
+  {name:"DeShawn Stevenson", era:"alltime", fame:"rolle"},
+  {name:"Anthony Parker", era:"alltime", fame:"rolle"},
+  {name:"Mike Miller", era:"alltime", fame:"rolle"},
+  {name:"James Posey", era:"alltime", fame:"rolle"},
+  {name:"Udonis Haslem", era:"alltime", fame:"rolle"},
+  {name:"Joel Anthony", era:"alltime", fame:"rolle"},
+  {name:"Mardy Collins", era:"alltime", fame:"rolle"}
+];
+
+function filterPlayers(eras, fames){
+  return PLAYER_DB.filter(p => eras.includes(p.era) && fames.includes(p.fame));
+}
+
+/* ---------------- State ---------------- */
+let state = {
+  screen: "setup",
+  playerCount: 4,
+  names: ["", "", "", ""],
+  selectedEras: ["aktuell"],   // "aktuell" | "alltime" — mehrfach wählbar
+  selectedFames: ["star"],     // "star" | "rolle" — mehrfach wählbar
+  imposterCount: 1,
+  // game data
+  chosenPlayer: null,
+  decoyPlayer: null, // imposter sees this if mode = decoy, else null
+  imposterMode: "blind", // "blind" = imposter sees nothing, "decoy" = imposter sees a different player
+  roles: [], // array aligned with names: "crew" | "imposter"
+  revealIndex: 0,
+  cardFlipped: false,
+  startOrder: []
+};
+
+function render(){
+  const app = document.getElementById('app');
+  app.innerHTML = "";
+  const screen = document.createElement('div');
+  screen.className = 'screen';
+  app.appendChild(screen);
+
+  if(state.screen === "setup") renderSetup(screen);
+  else if(state.screen === "reveal") renderReveal(screen);
+  else if(state.screen === "inprogress") renderInProgress(screen);
+  else if(state.screen === "results") renderResults(screen);
+}
+
+function brandHeader(container, tag){
+  const b = document.createElement('div');
+  b.className = 'brand';
+  b.innerHTML = `<h1>BAUM<span>SCHEIBE</span></h1><div class="tag">${tag}</div>`;
+  container.appendChild(b);
+}
+
+/* ---------------- SETUP ---------------- */
+function renderSetup(container){
+  brandHeader(container, "NBA Imposter Setup");
+
+  const label1 = document.createElement('p');
+  label1.className = 'field-label';
+  label1.textContent = 'Anzahl Spieler';
+  container.appendChild(label1);
+
+  const stepper = document.createElement('div');
+  stepper.className = 'stepper';
+  const minus = document.createElement('button');
+  minus.textContent = '–';
+  minus.onclick = () => { if(state.playerCount > 3){ state.playerCount--; state.names.pop(); render(); } };
+  const count = document.createElement('div');
+  count.className = 'count';
+  count.textContent = state.playerCount;
+  const plus = document.createElement('button');
+  plus.textContent = '+';
+  plus.onclick = () => { if(state.playerCount < 12){ state.playerCount++; state.names.push(""); render(); } };
+  stepper.appendChild(minus); stepper.appendChild(count); stepper.appendChild(plus);
+  container.appendChild(stepper);
+
+  const label2 = document.createElement('p');
+  label2.className = 'field-label';
+  label2.textContent = 'Namen (optional, sonst "Spieler 1, 2, ...")';
+  container.appendChild(label2);
+
+  const namesWrap = document.createElement('div');
+  namesWrap.className = 'player-names';
+  for(let i=0; i<state.playerCount; i++){
+    const inp = document.createElement('input');
+    inp.type = 'text';
+    inp.placeholder = `Spieler ${i+1}`;
+    inp.value = state.names[i] || "";
+    inp.maxLength = 16;
+    inp.oninput = (e) => { state.names[i] = e.target.value; };
+    namesWrap.appendChild(inp);
+  }
+  container.appendChild(namesWrap);
+
+  const label3 = document.createElement('p');
+  label3.className = 'field-label';
+  label3.textContent = 'Zeitraum (mehrfach wählbar)';
+  container.appendChild(label3);
+
+  const eraGrid = document.createElement('div');
+  eraGrid.className = 'category-grid';
+  [
+    {key:"aktuell", label:"Aktuell"},
+    {key:"alltime", label:"Allzeit / Legenden"}
+  ].forEach(opt => {
+    const chip = document.createElement('button');
+    const active = state.selectedEras.includes(opt.key);
+    chip.className = 'chip' + (active ? ' active' : '');
+    chip.textContent = opt.label;
+    chip.onclick = () => {
+      if(active){
+        if(state.selectedEras.length > 1) state.selectedEras = state.selectedEras.filter(e => e !== opt.key);
+      } else {
+        state.selectedEras = [...state.selectedEras, opt.key];
+      }
+      render();
+    };
+    eraGrid.appendChild(chip);
+  });
+  container.appendChild(eraGrid);
+
+  const label3b = document.createElement('p');
+  label3b.className = 'field-label';
+  label3b.textContent = 'Bekanntheit (mehrfach wählbar)';
+  container.appendChild(label3b);
+
+  const fameGrid = document.createElement('div');
+  fameGrid.className = 'category-grid';
+  [
+    {key:"star", label:"Bekannte Stars"},
+    {key:"rolle", label:"Weniger bekannt"}
+  ].forEach(opt => {
+    const chip = document.createElement('button');
+    const active = state.selectedFames.includes(opt.key);
+    chip.className = 'chip' + (active ? ' active' : '');
+    chip.textContent = opt.label;
+    chip.onclick = () => {
+      if(active){
+        if(state.selectedFames.length > 1) state.selectedFames = state.selectedFames.filter(f => f !== opt.key);
+      } else {
+        state.selectedFames = [...state.selectedFames, opt.key];
+      }
+      render();
+    };
+    fameGrid.appendChild(chip);
+  });
+  container.appendChild(fameGrid);
+
+  const pool = filterPlayers(state.selectedEras, state.selectedFames);
+  const poolInfo = document.createElement('p');
+  poolInfo.style.fontSize = '12.5px';
+  poolInfo.style.color = 'var(--crowd)';
+  poolInfo.style.marginTop = '-14px';
+  poolInfo.style.marginBottom = '22px';
+  poolInfo.textContent = `${pool.length} Spieler im Pool — Mix aus allen Kategorien möglich, einfach mehrere Chips anwählen.`;
+  container.appendChild(poolInfo);
+
+  const impRow = document.createElement('div');
+  impRow.className = 'imposter-count-row';
+  const impLabelWrap = document.createElement('div');
+  impLabelWrap.innerHTML = `<div style="font-size:14px;font-weight:600;">Imposter</div><div style="font-size:12px;color:var(--crowd);">verstecken sich unter den Crew-Spielern</div>`;
+  const miniStep = document.createElement('div');
+  miniStep.className = 'mini-stepper';
+  const mMinus = document.createElement('button');
+  mMinus.textContent = '–';
+  mMinus.onclick = () => { if(state.imposterCount > 1){ state.imposterCount--; render(); } };
+  const mN = document.createElement('div');
+  mN.className = 'n';
+  mN.textContent = state.imposterCount;
+  const mPlus = document.createElement('button');
+  mPlus.textContent = '+';
+  mPlus.onclick = () => { if(state.imposterCount < Math.floor(state.playerCount/2)){ state.imposterCount++; render(); } };
+  miniStep.appendChild(mMinus); miniStep.appendChild(mN); miniStep.appendChild(mPlus);
+  impRow.appendChild(impLabelWrap); impRow.appendChild(miniStep);
+  container.appendChild(impRow);
+
+  const label4 = document.createElement('p');
+  label4.className = 'field-label';
+  label4.textContent = 'Imposter-Modus';
+  container.appendChild(label4);
+  const modeGrid = document.createElement('div');
+  modeGrid.className = 'category-grid';
+  modeGrid.style.marginBottom = '24px';
+  [
+    {key:"blind", label:"Kennt keinen Spieler"},
+    {key:"decoy", label:"Bekommt anderen Spieler"}
+  ].forEach(m => {
+    const chip = document.createElement('button');
+    chip.className = 'chip' + (state.imposterMode === m.key ? ' active' : '');
+    chip.textContent = m.label;
+    chip.onclick = () => { state.imposterMode = m.key; render(); };
+    modeGrid.appendChild(chip);
+  });
+  container.appendChild(modeGrid);
+
+  container.appendChild(document.createElement('div')).className = 'spacer';
+
+  const startBtn = document.createElement('button');
+  startBtn.className = 'btn-primary';
+  startBtn.textContent = 'Runde starten';
+  startBtn.onclick = startGame;
+  container.appendChild(startBtn);
+
+  const footer = document.createElement('div');
+  footer.className = 'footer-note';
+  footer.textContent = 'Gerät rumgeben, jeder schaut nur seine eigene Karte an.';
+  container.appendChild(footer);
+}
+
+function getFinalNames(){
+  return Array.from({length: state.playerCount}, (_, i) => state.names[i]?.trim() || `Spieler ${i+1}`);
+}
+
+function startGame(){
+  state.names = getFinalNames();
+
+  // choose player + decoy from filtered pool
+  const pool = filterPlayers(state.selectedEras, state.selectedFames);
+  const chosenIdx = Math.floor(Math.random() * pool.length);
+  state.chosenPlayer = pool[chosenIdx].name;
+  if(state.imposterMode === "decoy"){
+    let decoyIdx;
+    do { decoyIdx = Math.floor(Math.random() * pool.length); } while(decoyIdx === chosenIdx && pool.length > 1);
+    state.decoyPlayer = pool[decoyIdx].name;
+  } else {
+    state.decoyPlayer = null;
+  }
+
+  // assign roles
+  const indices = state.names.map((_, i) => i);
+  shuffle(indices);
+  const imposterIdxSet = new Set(indices.slice(0, state.imposterCount));
+  state.roles = state.names.map((_, i) => imposterIdxSet.has(i) ? "imposter" : "crew");
+
+  // random reveal order (also doubles as turn-speaking order)
+  state.startOrder = shuffle([...indices]);
+
+  state.revealIndex = 0;
+  state.cardFlipped = false;
+  state.screen = "reveal";
+  render();
+}
+
+function shuffle(arr){
+  for(let i = arr.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i+1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+/* ---------------- REVEAL (pass the phone) ---------------- */
+function renderReveal(container){
+  brandHeader(container, `Karte ${state.revealIndex+1} von ${state.playerCount}`);
+
+  const dots = document.createElement('div');
+  dots.className = 'progress-dots';
+  for(let i=0;i<state.playerCount;i++){
+    const d = document.createElement('div');
+    d.className = 'dot' + (i < state.revealIndex ? ' done' : '');
+    dots.appendChild(d);
+  }
+  container.appendChild(dots);
+
+  const stage = document.createElement('div');
+  stage.className = 'reveal-stage';
+
+  const personIdx = state.startOrder[state.revealIndex];
+  const personName = state.names[personIdx];
+  const role = state.roles[personIdx];
+
+  const turnLabel = document.createElement('div');
+  turnLabel.className = 'player-turn-label';
+  turnLabel.textContent = 'Gerät geben an';
+  stage.appendChild(turnLabel);
+
+  const turnName = document.createElement('h2');
+  turnName.className = 'player-turn-name';
+  turnName.textContent = personName;
+  stage.appendChild(turnName);
+
+  const card = document.createElement('div');
+  card.className = 'card' + (state.cardFlipped ? ' flipped' : '');
+  const cardInner = document.createElement('div');
+  cardInner.className = 'card-inner';
+
+  const front = document.createElement('div');
+  front.className = 'card-face card-front';
+  front.innerHTML = `<div class="ball">🏀</div><div class="tap-hint">Tippen zum Aufdecken</div>`;
+
+  const back = document.createElement('div');
+  back.className = 'card-face card-back';
+  if(role === 'crew'){
+    back.innerHTML = `
+      <div class="role-tag crew">Crew</div>
+      <p class="reveal-name">${state.chosenPlayer}</p>
+      <p class="reveal-sub">Das ist dein Spieler. Gib gleich einen Hinweis, ohne den Namen zu sagen.</p>`;
+  } else {
+    if(state.imposterMode === 'decoy'){
+      back.innerHTML = `
+        <div class="role-tag imp">Imposter</div>
+        <p class="reveal-name">${state.decoyPlayer}</p>
+        <p class="reveal-sub">Achtung: Die anderen haben einen anderen Spieler! Bluffe mit.</p>`;
+    } else {
+      back.innerHTML = `
+        <div class="role-tag imp">Imposter</div>
+        <p class="reveal-name">??? </p>
+        <p class="reveal-sub">Du kennst den Spieler nicht. Hör gut zu und bluffe mit, ohne aufzufliegen.</p>`;
+    }
+  }
+
+  cardInner.appendChild(front);
+  cardInner.appendChild(back);
+  card.appendChild(cardInner);
+  card.onclick = () => {
+    if(!state.cardFlipped){
+      state.cardFlipped = true;
+      render();
+    }
+  };
+  stage.appendChild(card);
+
+  const nextBtn = document.createElement('button');
+  nextBtn.className = 'btn-primary';
+  nextBtn.style.width = '100%';
+  nextBtn.textContent = state.revealIndex === state.playerCount - 1 ? 'Weiter zur Runde' : 'Nächster Spieler';
+  nextBtn.disabled = !state.cardFlipped;
+  nextBtn.onclick = () => {
+    if(!state.cardFlipped) return;
+    if(state.revealIndex === state.playerCount - 1){
+      state.screen = "inprogress";
+    } else {
+      state.revealIndex++;
+      state.cardFlipped = false;
+    }
+    render();
+  };
+  stage.appendChild(nextBtn);
+
+  container.appendChild(stage);
+}
+
+/* ---------------- IN PROGRESS (speaking order) ---------------- */
+function renderInProgress(container){
+  brandHeader(container, "Runde läuft");
+  const stage = document.createElement('div');
+  stage.className = 'ip-stage';
+  stage.innerHTML = `<div class="icon">🗣️</div>
+    <h2>Jetzt wird gesprochen</h2>
+    <p>In dieser Reihenfolge nennt jeder einen Hinweis zu seinem Spieler — ohne den Namen zu sagen. Wer keinen Spieler hat, bluffed mit.</p>`;
+
+  const orderList = document.createElement('div');
+  orderList.className = 'order-list';
+  state.startOrder.forEach((idx, i) => {
+    const row = document.createElement('div');
+    row.innerHTML = `<b>${i+1}.</b> ${state.names[idx]}`;
+    orderList.appendChild(row);
+  });
+  stage.appendChild(orderList);
+
+  const voteBtn = document.createElement('button');
+  voteBtn.className = 'btn-primary';
+  voteBtn.style.width = '100%';
+  voteBtn.textContent = 'Alle fertig — Auflösung zeigen';
+  voteBtn.onclick = () => {
+    state.screen = "results";
+    render();
+  };
+  stage.appendChild(voteBtn);
+  container.appendChild(stage);
+}
+
+/* ---------------- RESULTS ---------------- */
+function renderResults(container){
+  brandHeader(container, "Auflösung");
+
+  const imposterIndices = state.roles.map((r,i) => r === 'imposter' ? i : -1).filter(i => i !== -1);
+  const isMultiple = imposterIndices.length > 1;
+
+  const banner = document.createElement('div');
+  banner.className = 'result-banner win';
+  banner.innerHTML = `<p class="headline">Aufgedeckt 🔎</p><p class="sub">Jetzt diskutieren, wer's geahnt hat.</p>`;
+  container.appendChild(banner);
+
+  const playerCard = document.createElement('div');
+  playerCard.className = 'reveal-card-final';
+  playerCard.innerHTML = `<div><div class="label">Der Spieler war</div><div class="val">${state.chosenPlayer}</div></div>`;
+  container.appendChild(playerCard);
+
+  if(state.imposterMode === 'decoy' && state.decoyPlayer){
+    const decoyCard = document.createElement('div');
+    decoyCard.className = 'reveal-card-final';
+    decoyCard.innerHTML = `<div><div class="label">Imposter-Spieler war</div><div class="val">${state.decoyPlayer}</div></div>`;
+    container.appendChild(decoyCard);
+  }
+
+  const impCard = document.createElement('div');
+  impCard.className = 'reveal-card-final';
+  impCard.style.marginBottom = '24px';
+  impCard.innerHTML = `<div><div class="label">${isMultiple ? 'Imposter (alle)' : 'Imposter'}</div><div class="val">${imposterIndices.map(i => state.names[i]).join(', ')}</div></div>`;
+  container.appendChild(impCard);
+
+  container.appendChild(document.createElement('div')).className = 'spacer';
+
+  const againBtn = document.createElement('button');
+  againBtn.className = 'btn-primary';
+  againBtn.style.width = '100%';
+  againBtn.style.marginBottom = '10px';
+  againBtn.textContent = 'Nochmal spielen (gleiche Spieler)';
+  againBtn.onclick = () => {
+    startGame();
+  };
+  container.appendChild(againBtn);
+
+  const newSetupBtn = document.createElement('button');
+  newSetupBtn.className = 'btn-secondary';
+  newSetupBtn.style.width = '100%';
+  newSetupBtn.textContent = 'Neue Runde einrichten';
+  newSetupBtn.onclick = () => {
+    state.screen = "setup";
+    render();
+  };
+  container.appendChild(newSetupBtn);
+}
+
+render();
+})();
+</script>
+</body>
+</html>
